@@ -336,13 +336,35 @@ the entire match being \"file-find-at\" and with three groups
 
 A similar match can be achieve with \"fi-fi-at\", or \"FFA\",
 or \"find-f-a\"."
-  (let ((case-fold-search nil)
-        (expr (if with-groups
-                  "\\(\\b%s\\)[^\\/]*?"
-                "\\b%s[^\\/]*?")))
+  (let* ((case-fold-search nil)
+         (strong-divisors
+          (regexp-quote (concat "\\" "/" "|" ";")))
+         (with-strong-divisors
+          (format "[%s]" strong-divisors))
+         (without-strong-divisors
+          (format "[^%s]" strong-divisors))
+         (upper-text-expr
+          (if with-groups "\\(%s\\|\\b%s\\)%s*?" "(?:%s\\|\\b%s)%s*?"))
+         (lower-text-expr
+          (if with-groups "\\(\\b%s\\)%s*?" "\\b%s%s*?"))
+         (symbol-expr
+          (if with-groups ".*?\\(%s\\)\\W*?" ".*?%s\\W*?")))
     (replace-regexp-in-string
-     "[[:upper:]][[:lower:]]*\\|\\W[[:lower:]]*\\|[[:lower:]]+"
-     (lambda (s) (format expr (regexp-quote (downcase s))))
+     "\\W\\|[[:upper:]][[:lower:]]*\\|[[:lower:]]+"
+     (lambda (s)
+       (cond
+        ((string-match-p with-strong-divisors s)
+         (format symbol-expr
+                 (regexp-quote s)))
+        ((string-match-p "^[[:upper:]]" s)
+         (format upper-text-expr
+                 (regexp-quote s)
+                 (regexp-quote (downcase s))
+                 without-strong-divisors))
+        (t
+         (format lower-text-expr
+                 (regexp-quote s)
+                 without-strong-divisors))))
      query
      'fixed-case
      'literal)))
